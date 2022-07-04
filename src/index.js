@@ -33,39 +33,9 @@ function createTextElement(value) {
 // 第二步，当用户按照我们定下的规则将图画好，还有告诉我们在什么地方渲染，要去政府拍一块地吧
 // 等这两个都准备好了，就可以按下我们的启动开关，准备打印游乐场了。
 // 这个开关就是向外暴露的render函数。
-
-// render函数现在最简单的工作就是，递归按照图上的设计，创建实际的dom,比如图上标注这里是一块面30*30的玻璃，他要安装到窗户上
-// function render(elements, container) {
-//   const {
-//     type,
-//     props
-//   } = elements;
-//   // 创建node
-//   const node =
-//     elements.type === 'TEXT_ELEMENT'
-//       ? document.createTextNode('')
-//       : document.createElement(elements.type);
-//   const isProperty = (propName) => propName !== 'children'; 
-
-//   // 设置这个部件的一些属性，描绘属性，例如是白色的墙还是红色的墙
-//   Object.keys(props)
-//   .filter(isProperty)
-//   .forEach((propName) => {
-//     node[propName] = props[propName]
-//   })
-//   // 渲染子部件，例如大楼里面的墙,每面墙的砖
-//   props.children.forEach((element) => {
-//     render(element, node)
-//   })
-//   // 渲染好的这个部件放在这个容器里面，例如把这面强放在地板的上面
-//   container.appendChild(node);
-// }
-
-// 现在这个打印机要升级，打印一栋大楼要花费好长时间呢，
 // 公司老板希望在打印大任务的同时，可以优先打印一些小任务或者一些紧急的任务,不然就发不起工资了
-// 例如我现在要打印一架飞机
-// 如果要把之前的render改成可中断的，那肯定是要整个流程拆分成更小的单元，那则么分呢，每一个小部件都是一个工作单元吧
-// 这个打印机需要新增一块来控制，渲染流程了
+// 例如在打印游乐场的时候，老板想要先打印一架飞机
+// 如果要把之前的render改成可中断的，那肯定是要整个流程拆分成更小的单元，那则么分呢，每一个小部件都是一个工作单元，每一个element都对应一个fiber
 let nextUnitOfWork = null
 let wipRoot = null
 let currentRoot =null;
@@ -97,6 +67,7 @@ function workLoop(deadline) {
     // 每执行完一个单元就去检查是否还有剩余时间可以继续执行
     shouldYield = deadline.timeReaming < 1
  }
+ // 如果任务执行完，就进入commit阶段
  if (!nextUnitOfWork && wipRoot) {
   commitRoot()
  }
@@ -206,9 +177,8 @@ function commitDeletion(fiber, domParent) {
   }
 }
 // 具体的执行每一个任务
-// 1.将element添加dom
-// 2.创建子节点的fiber
-// 3.选择下一个工作单元，找下一个工作单元的规则：
+// 1.根据fiber的类型，将fiber送入不同的工厂
+// 2.选择下一个工作单元，找下一个工作单元的规则：
 // 1）判断安是否有子节点，有的话下一个工作单元就是子节点
 // 2) 如果没有子节点，就去找兄弟节点
 // 3）既没有子节点有没有兄弟节点，就去找叔叔节点（父节点的兄弟）
@@ -222,7 +192,6 @@ function performUnitOfWork(fiber) {
   } else {
     updateHostComponent(fiber)
   }
-  // 为子节创建fiber
   // 选皇上了
   // 自己的长子，
   if (fiber.child) {
@@ -240,6 +209,8 @@ function performUnitOfWork(fiber) {
 }
 let wipFiber = null; // 存储当前工作的fiber
 let hookIndex = null
+// 函数类型的fiber
+// 调用函数组件的函数，得到children送往reconcileChildren
 function updateFunctionComponent(fiber) {
   wipFiber = fiber;
   hookIndex  = 0;
@@ -247,6 +218,8 @@ function updateFunctionComponent(fiber) {
   const children = [fiber.type(fiber.props)]
   reconcileChildren(fiber, children)
 }
+// 创建dom
+// 然后调用reconcileChildren创建子节点
 function updateHostComponent(fiber) {
   // 如果fiber的parent存在，就改fiber的dom添加父节点的fiber
   // 将这个部件放置到它的容器里面
@@ -261,6 +234,9 @@ function updateHostComponent(fiber) {
   }
   reconcileChildren(fiber, fiber.props.children)
 }
+// 运用diff算法，创建不同的fiber,对应更新、新增、删除
+// 然后将这个fiber放在正确的位置，例如第一个节点，就保存在fiber.child
+// 不然就就是第一个子fiber.sibling
 function reconcileChildren(returnFiber, elements) {
   let index = 0;
   let prevSibling = null;
@@ -398,4 +374,4 @@ const element = MinReact.createElement(
 
 const container = document.getElementById('root');
 
-render(element, container);
+MinReact.render(element, container);
